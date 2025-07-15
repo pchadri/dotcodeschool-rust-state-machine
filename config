@@ -1,0 +1,11 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = true
+[receive]
+	fsckobjects = true
+	denynonfastforwards = true
+	denydeletes = true
+	denycurrentbranch = ignore
+[http]
+	receivepack = true

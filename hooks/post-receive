@@ -1,0 +1,92 @@
+
+st-Receive Git Hook Script
+# ----------------------------
+# This post-receive hook script is designed to run on the server after a successful git push.
+# It performs the following actions:
+#
+# 1. Displays an ASCII art of the logo for Dot Code School as the welcome banner.
+# 2. Prints a custom welcome message to notify the user of a successful commit reception.
+# 3. Retrieves the current working directory of the repository where the hook is executed.
+# 4. Extracts the username and repository name from the directory path.
+# 5. Constructs and displays the full URL of the repository based on extracted details.
+#
+# Required Environment Variables:
+# - GIT_SERVER_URL: The base URL of the git server (e.g., https://git.dotcodeschool.com)
+# - BACKEND_URL: The base URL of the backend server (e.g., https://backend.dotcodeschool.com)
+#
+# The script uses ANSI escape codes to colorize output:
+# - GREEN for success messages.
+# - BLUE, and ORANGE if needed for additional messages or alerts (currently not used in this script).
+# - NC (No Color) resets the text color to default terminal color to avoid bleed-over of colors in terminal output.
+#
+# Usage: 
+# This script should be placed in the 'hooks/post-receive' directory of a Git repository and made executable.
+# It helps in providing immediate visual feedback to users who push to the repository, and constructs a URL that can be used for further automated tasks or logging.
+#
+# Note:
+# Ensure the base URL ("https://gitserver.com/") is correctly configured to match your server's URL structure.
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+ORANGE='\033[0;33m'
+NC='\033[0m' # No Color
+GIT_SERVER_URL="https://git.dotcodeschool.com"
+BACKEND_URL="https://backend.dotcodeschool.com"
+
+# Check for required environment variables
+if [ -z "$GIT_SERVER_URL" ]; then
+    echo "Error: GIT_SERVER_URL environment variable is not set"
+    exit 1
+fi
+
+if [ -z "$BACKEND_URL" ]; then
+    echo "Error: BACKEND_URL environment variable is not set"
+    exit 1
+fi
+
+echo  "---------------------------------------------------------------------"
+printf "\n\
+\n\
+${GREEN}      _       _                _                _                 _ ${NC}\n\
+${GREEN}     | |     | |              | |              | |               | |${NC}\n\
+${GREEN}   __| | ___ | |_ ___ ___   __| | ___  ___  ___| |__   ___   ___ | |${NC}\n\
+${GREEN}  / _\` |/ _ \\| __/ __/ _ \\ / _\` |/ _ \\/ __|/ __| '_ \\ / _ \\ / _ \\| |${NC}\n\
+${GREEN} | (_| | (_) | || (_| (_) | (_| |  __/\\__ \\ (__| | | | (_) | (_) | |${NC}\n\
+${GREEN}  \\__,_|\\___/ \\__\\___\\___/ \\__,_|\\___||___/\\___|_| |_|\\___/ \\___/|_|${NC}\n\
+\n\
+\n\
+    Welcome to ${GREEN}Dot Code School${NC}! Your commit was received successfully.\n\
+\n\
+---------------------------------------------------------------------\n\
+\n" >&1
+
+while read oldrev newrev refname
+do
+    branch=$(echo $refname | sed 's|refs/heads/||')
+
+    if [ "$branch" != "master" ]; then
+        printf "\n\
+        ${RED}Trying to submit your solution? Push to the master branch instead.${NC}\n\
+        ${RED}Dot Code School accepts pushes to all branches but only run tests on master.${NC}\n\
+        " >&1
+        exit 1
+    fi
+done
+
+# Using pwd to get the current working directory
+REPO_PATH=$(pwd)
+
+# Extract <repo-name> from the path
+REPO_NAME=$(basename "$REPO_PATH")
+
+# Construct the full URL
+REPO_URL="${GIT_SERVER_URL}/${REPO_NAME}"
+
+# Notify backend about the push
+curl -fsSL -X PUT \
+     -H "Content-Type: application/json" \
+     -d '{ "test_ok": true }' \
+     "${BACKEND_URL}/api/v0/repository/${REPO_NAME}" \
+     --max-time 30 -o /dev/null&
+
