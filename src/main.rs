@@ -17,7 +17,7 @@ mod types {
 #[derive(Debug)]
 pub struct Runtime {
 	system: system::Pallet<Self>,
-	balances: balances::Pallet<AccountID, Balance>,
+	balances: balances::Pallet<Self>,
 }
 
 impl system::Config for Runtime {
@@ -26,13 +26,15 @@ impl system::Config for Runtime {
 	type Nonce = Nonce;
 }
 
+impl balances::Config for Runtime {
+	type AccountID = AccountID;
+	type Balance = Balance;
+}
+
 impl Runtime {
 	// Create a new instance of the main Runtime, by creating a new instance of each pallet.
 	fn new() -> Self {
-		Self {
-			system: system::Pallet::<Self>::new(),
-			balances: balances::Pallet::<AccountID, Balance>::new(),
-		}
+		Self { system: system::Pallet::<Self>::new(), balances: balances::Pallet::<Self>::new() }
 	}
 }
 

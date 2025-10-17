@@ -7,31 +7,32 @@ use std::collections::BTreeMap;
 //type AccountID = String; moved to main.rs because of generics
 //type Balance = u128; moved to main.rs because of generics
 
-#[derive(Debug)]
-pub struct Pallet<AccountID, Balance> {
-	// A simple storage mapping from accounts (`String`) to their balances (`u128`).
-	balances: BTreeMap<AccountID, Balance>,
+pub trait Config {
+	type AccountID: Ord + Clone;
+	type Balance: CheckedAdd + CheckedSub + Zero + Clone;
 }
 
-impl<AccountID, Balance> Pallet<AccountID, Balance>
-where
-	AccountID: Ord + Clone,
-	Balance: CheckedAdd + CheckedSub + Zero + Clone,
-{
+#[derive(Debug)]
+pub struct Pallet<T: Config> {
+	// A simple storage mapping from accounts (`String`) to their balances (`u128`).
+	balances: BTreeMap<T::AccountID, T::Balance>,
+}
+
+impl<T: Config> Pallet<T> {
 	/// Create a new instance of the balances module.
 	pub fn new() -> Self {
 		Self { balances: BTreeMap::new() }
 	}
 
 	/// Set the balance of an account `who` to some `amount`.
-	pub fn set_balance(&mut self, who: &AccountID, amount: Balance) {
+	pub fn set_balance(&mut self, who: &T::AccountID, amount: T::Balance) {
 		self.balances.insert(who.clone(), amount);
 	}
 
 	/// Get the balance of an account `who`.
 	/// If the account has no stored balance, we return zero.
-	pub fn balance(&self, who: &AccountID) -> Balance {
-		self.balances.get(who).cloned().unwrap_or(Balance::zero())
+	pub fn balance(&self, who: &T::AccountID) -> T::Balance {
+		self.balances.get(who).cloned().unwrap_or(T::Balance::zero())
 	}
 
 	/// Transfer `amount` from one account to another.
@@ -39,9 +40,9 @@ where
 	/// and that no mathematical overflows occur.
 	pub fn transfer(
 		&mut self,
-		caller: &AccountID,
-		to: &AccountID,
-		amount: Balance,
+		caller: &T::AccountID,
+		to: &T::AccountID,
+		amount: T::Balance,
 	) -> Result<(), &'static str> {
 		/* TODO:
 			- Get the balance of account `caller`.
@@ -82,9 +83,17 @@ where
 
 #[cfg(test)]
 mod tests {
+	use super::*;
+
+	// Localized tests using the types in balances.rs
+	struct TestConfig;
+	impl Config for TestConfig {
+		type AccountID = String;
+		type Balance = u128;
+	}
 	#[test]
-	fn init_balances() {
-		let mut balances = super::Pallet::<String, u128>::new();
+	fn localized_init_balances() {
+		let mut balances = Pallet::<TestConfig>::new();
 
 		assert_eq!(balances.balance(&"alice".to_string()), 0);
 		balances.set_balance(&"alice".to_string(), 100);
@@ -93,7 +102,7 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer_balance() {
+	fn localized_transfer_balance() {
 		/* TODO: Create a test that checks the following:
 			- That `alice` cannot transfer funds she does not have.
 			- That `alice` can successfully transfer funds to `bob`.
@@ -101,7 +110,7 @@ mod tests {
 		*/
 
 		// Initialize the balances module
-		let mut balances = super::Pallet::<String, u128>::new();
+		let mut balances = Pallet::<TestConfig>::new();
 
 		// Set initial balance for Alice
 		balances.set_balance(&"alice".to_string(), 100);
@@ -112,12 +121,54 @@ mod tests {
 
 		// Attempt to transfer more than Alice's balance
 		assert_eq!(
-			balances.transfer("alice".to_string(), "bob".to_string(), 150),
+			balances.transfer(&"alice".to_string(), &"bob".to_string(), 150),
 			Err("Insufficient balance for transfer")
 		);
 
 		// Transfer a valid amount from Alice to Bob
-		assert_eq!(balances.transfer("alice".to_string(), "bob".to_string(), 50), Ok(()));
+		assert_eq!(balances.transfer(&"alice".to_string(), &"bob".to_string(), 50), Ok(()));
+
+		// Check final balances
+		assert_eq!(balances.balance(&"alice".to_string()), 50);
+		assert_eq!(balances.balance(&"bob".to_string()), 50);
+	}
+
+	#[test]
+	fn integrated_init_balances() {
+		let mut balances = Pallet::<crate::Runtime>::new();
+
+		assert_eq!(balances.balance(&"alice".to_string()), 0);
+		balances.set_balance(&"alice".to_string(), 100);
+		assert_eq!(balances.balance(&"alice".to_string()), 100);
+		assert_eq!(balances.balance(&"bob".to_string()), 0);
+	}
+
+	#[test]
+	fn integrated_transfer_balance() {
+		/* TODO: Create a test that checks the following:
+			- That `alice` cannot transfer funds she does not have.
+			- That `alice` can successfully transfer funds to `bob`.
+			- That the balance of `alice` and `bob` is correctly updated.
+		*/
+
+		// Initialize the balances module
+		let mut balances = Pallet::<crate::Runtime>::new();
+
+		// Set initial balance for Alice
+		balances.set_balance(&"alice".to_string(), 100);
+
+		// Ensure Bob starts with zero balance
+		//assert_eq!(balances.balance(&"bob".to_string()), 0); Deprecated in favor of just setting balance to 0
+		balances.set_balance(&"bob".to_string(), 0);
+
+		// Attempt to transfer more than Alice's balance
+		assert_eq!(
+			balances.transfer(&"alice".to_string(), &"bob".to_string(), 150),
+			Err("Insufficient balance for transfer")
+		);
+
+		// Transfer a valid amount from Alice to Bob
+		assert_eq!(balances.transfer(&"alice".to_string(), &"bob".to_string(), 50), Ok(()));
 
 		// Check final balances
 		assert_eq!(balances.balance(&"alice".to_string()), 50);
