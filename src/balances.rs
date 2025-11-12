@@ -7,8 +7,7 @@ use std::collections::BTreeMap;
 //type AccountID = String; moved to main.rs because of generics
 //type Balance = u128; moved to main.rs because of generics
 
-pub trait Config {
-	type AccountID: Ord + Clone;
+pub trait Config: crate::system::Config {
 	type Balance: CheckedAdd + CheckedSub + Zero + Clone;
 }
 
@@ -87,8 +86,14 @@ mod tests {
 
 	// Localized tests using the types in balances.rs
 	struct TestConfig;
+	
+	impl crate::system::Config for TestConfig {
+		type AccountID = String;			
+		type BlockNumber = u32;
+		type Nonce = u32;
+	}
+	
 	impl Config for TestConfig {
-		type AccountID = String;
 		type Balance = u128;
 	}
 	#[test]
