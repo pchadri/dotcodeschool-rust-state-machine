@@ -1,8 +1,14 @@
+// This is our main Runtime.
+// It accumulates all of the different pallets we want to use.
+
+// Import the types we defined in the types module below so that we can use them without prefixing them with `crate::types::`.
 use crate::types::{AccountID, Balance, BlockNumber, Nonce};
 
+//import the pallets so we can use them in our runtime.
 mod balances;
 mod system;
 
+// Define the concrete	types we'll use in our runtime.
 mod types {
 	// Define some common types we'll use in our pallets and runtime.
 	pub type AccountID = String;
@@ -11,15 +17,17 @@ mod types {
 	pub type Nonce = u32;
 }
 
-// This is our main Runtime.
-// It accumulates all of the different pallets we want to use.
-
 #[derive(Debug)]
+//	The main runtime struct which holds instances of each pallet. 
+//<Self> is used to refer to the runtime itself when passing it as a generic parameter to each pallet.
+// It means each pallet will refer to the	runtime's implementation of the Config trait to get its associated types.
 pub struct Runtime {
 	system: system::Pallet<Self>,
 	balances: balances::Pallet<Self>,
 }
 
+// Implement the config traits defined in each pallet for our runtime, specifically, the associated types.
+//	Here we link the associated types for each config to the concrete values we gave in our mod types that we defined at the beginning then imported using crate.
 impl system::Config for Runtime {
 	type BlockNumber = BlockNumber;
 	type AccountID = AccountID;
