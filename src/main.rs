@@ -16,6 +16,13 @@ mod types {
 	pub type Balance = u128;
 	pub type BlockNumber = u32;
 	pub type Nonce = u32;
+	pub type Extrinsic = crate::support::Extrinsic<AccountID, crate::RuntimeCall>;
+	pub type Header = crate::support::Header<BlockNumber>;
+	pub type Block = crate::support::Block<Header, Extrinsic>;
+}
+
+pub enum RuntimeCall {
+				
 }
 
 #[derive(Debug)]
@@ -35,6 +42,7 @@ impl system::Config for Runtime {
 	type Nonce = Nonce;
 }
 
+//Because	balances::Config extends system::Config, we only need to implement the additional associated type Balance here.
 impl balances::Config for Runtime {
 	type Balance = Balance;
 }
