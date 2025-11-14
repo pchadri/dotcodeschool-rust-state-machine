@@ -7,6 +7,7 @@ use crate::types::{AccountID, Balance, BlockNumber, Nonce};
 //import the pallets so we can use them in our runtime.
 mod balances;
 mod system;
+mod support;
 
 // Define the concrete	types we'll use in our runtime.
 mod types {
